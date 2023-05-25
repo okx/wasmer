@@ -1,7 +1,8 @@
 mod cell;
 mod env;
 mod exports;
-mod externals;
+/// cbindgen:ignore
+pub mod externals;
 mod import_object;
 mod instance;
 mod module;

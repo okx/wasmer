@@ -7,7 +7,7 @@ use crate::sys::NativeFunc;
 use crate::sys::RuntimeError;
 use crate::sys::WasmerEnv;
 pub use inner::{FromToNativeWasmType, HostFunction, WasmTypeList, WithEnv, WithoutEnv};
-
+use std::time::Instant;
 use loupe::MemoryUsage;
 use std::cmp::max;
 use std::ffi::c_void;
@@ -19,6 +19,54 @@ use wasmer_vm::{
     VMCallerCheckedAnyfunc, VMDynamicFunctionContext, VMFuncRef, VMFunction, VMFunctionBody,
     VMFunctionEnvironment, VMFunctionKind, VMTrampoline,
 };
+
+/// cbindgen:ignore
+pub static mut Log_PreExecute: u128 = 0;
+/// cbindgen:ignore
+pub static mut Log_Execute: u128 = 0;
+/// cbindgen:ignore
+pub static mut Log_Return: u128 = 0;
+/// cbindgen:ignore
+pub fn get_log_pre_execute() -> u128 {
+    unsafe {
+        Log_PreExecute
+    }
+}
+/// cbindgen:ignore
+pub fn get_log_execute() -> u128 {
+    unsafe {
+        Log_Execute
+    }
+}
+/// cbindgen:ignore
+pub fn get_log_return() -> u128 {
+    unsafe {
+        Log_Return
+    }
+}
+/// cbindgen:ignore
+pub fn reset_values(){
+    unsafe {
+        Log_PreExecute=0;
+        Log_Execute=0;
+        Log_Return=0;
+    }
+}
+fn add_pre_execute(value: u128) {
+    unsafe {
+        Log_PreExecute+= value;
+    }
+}
+fn add_execute(value: u128) {
+    unsafe {
+        Log_Execute+= value;
+    }
+}
+fn add_return(value: u128) {
+    unsafe {
+        Log_Return+= value;
+    }
+}
 
 /// A WebAssembly `function` instance.
 ///
@@ -388,6 +436,7 @@ impl Function {
         params: &[Val],
         results: &mut [Val],
     ) -> Result<(), RuntimeError> {
+        let mut start=Instant::now();
         let format_types_for_error_message = |items: &[Val]| {
             items
                 .iter()
@@ -427,7 +476,8 @@ impl Function {
                 arg.write_value_to(slot);
             }
         }
-
+        add_pre_execute(start.elapsed().as_nanos());
+        let mut start=Instant::now();
         // Call the trampoline.
         if let Err(error) = unsafe {
             wasmer_call_trampoline(
@@ -441,6 +491,8 @@ impl Function {
             return Err(RuntimeError::from_trap(error));
         }
 
+        add_execute(start.elapsed().as_nanos());
+        let mut start=Instant::now();
         // Load the return values out of `values_vec`.
         for (index, &value_type) in signature.results().iter().enumerate() {
             unsafe {
@@ -448,7 +500,7 @@ impl Function {
                 results[index] = Val::read_value_from(&self.store, ptr, value_type);
             }
         }
-
+        add_return(start.elapsed().as_nanos());
         Ok(())
     }
 

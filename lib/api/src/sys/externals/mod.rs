@@ -1,4 +1,5 @@
-pub(crate) mod function;
+/// cbindgen:ignore
+pub mod function;
 mod global;
 mod memory;
 mod table;
