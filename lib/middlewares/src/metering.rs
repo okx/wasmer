@@ -285,8 +285,7 @@ impl<F: Fn(&Operator) -> u64 + Send + Sync> FunctionMiddleware for FunctionMeter
 pub fn get_remaining_points(ctx: &mut impl AsStoreMut, instance: &Instance) -> MeteringPoints {
     let exhausted: i32 = instance
         .exports
-        .get_global("wasmer_metering_points_exhausted")
-        .expect("Can't get `wasmer_metering_points_exhausted` from Instance")
+        .get_points_exhausted()
         .get(ctx)
         .try_into()
         .expect("`wasmer_metering_points_exhausted` from Instance has wrong type");
@@ -297,8 +296,7 @@ pub fn get_remaining_points(ctx: &mut impl AsStoreMut, instance: &Instance) -> M
 
     let points = instance
         .exports
-        .get_global("wasmer_metering_remaining_points")
-        .expect("Can't get `wasmer_metering_remaining_points` from Instance")
+        .get_remain_points()
         .get(ctx)
         .try_into()
         .expect("`wasmer_metering_remaining_points` from Instance has wrong type");
@@ -332,18 +330,23 @@ pub fn get_remaining_points(ctx: &mut impl AsStoreMut, instance: &Instance) -> M
 ///     set_remaining_points(store, instance, new_limit);
 /// }
 /// ```
-pub fn set_remaining_points(ctx: &mut impl AsStoreMut, instance: &Instance, points: u64) {
+pub fn set_remaining_points(ctx: &mut impl AsStoreMut, instance: &mut Instance, points: u64) {
+
+    if !instance.exports.has_init(){
+        let points_exhausted=instance.exports.get_global("wasmer_metering_points_exhausted").unwrap();
+        let remaining_points=instance.exports.get_global("wasmer_metering_remaining_points").unwrap();
+        instance.exports.set_two_global(points_exhausted.clone(),remaining_points.clone());
+    }
+
     instance
         .exports
-        .get_global("wasmer_metering_remaining_points")
-        .expect("Can't get `wasmer_metering_remaining_points` from Instance")
+        .get_remain_points()
         .set(ctx, points.into())
         .expect("Can't set `wasmer_metering_remaining_points` in Instance");
 
     instance
         .exports
-        .get_global("wasmer_metering_points_exhausted")
-        .expect("Can't get `wasmer_metering_points_exhausted` from Instance")
+        .get_points_exhausted()
         .set(ctx, 0i32.into())
         .expect("Can't set `wasmer_metering_points_exhausted` in Instance");
 }
