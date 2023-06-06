@@ -60,6 +60,9 @@ pub enum ExportError {
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct Exports {
     map: IndexMap<String, Extern>,
+    points_exhausted :Option<Global>,
+    remain_points :Option<Global>,
+    already_init:bool
 }
 
 impl Exports {
@@ -68,10 +71,24 @@ impl Exports {
         Default::default()
     }
 
+    /// Creates a new `set_a`.
+    pub fn set_two_global(&mut self,a:Global,b:Global){
+        self.points_exhausted=Some(a);
+        self.remain_points=Some(b);
+        self.already_init=true
+    }
+
+    /// Creates a new `has_init`.
+    pub fn has_init(&mut self)->bool{
+        return self.already_init
+    }
     /// Creates a new `Exports` with capacity `n`.
     pub fn with_capacity(n: usize) -> Self {
         Self {
             map: IndexMap::with_capacity(n),
+            points_exhausted:None,
+            remain_points:None,
+            already_init:false
         }
     }
 
@@ -110,6 +127,16 @@ impl Exports {
             None => Err(ExportError::Missing(name.to_string())),
             Some(extern_) => T::get_self_from_extern(extern_),
         }
+    }
+
+    /// Get an export as a `get_points_exhausted`.
+    pub fn get_points_exhausted(&self)->&Global{
+        self.points_exhausted.as_ref().unwrap()
+    }
+
+    /// Get an export as a `get_remain_points`.
+    pub fn get_remain_points(&self)->&Global{
+        self.remain_points.as_ref().unwrap()
     }
 
     /// Get an export as a `Global`.
@@ -273,6 +300,9 @@ impl FromIterator<(String, Extern)> for Exports {
     fn from_iter<I: IntoIterator<Item = (String, Extern)>>(iter: I) -> Self {
         Self {
             map: IndexMap::from_iter(iter),
+            points_exhausted:None,
+            remain_points:None,
+            already_init:false
         }
     }
 }
